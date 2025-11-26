@@ -76,3 +76,31 @@ Kubernetes Worker
 - 2 components to be installed [ kubeproxy, kubelet]
 - container will be deployed and run on the worker 
 - a worker has to connect to the master
+
+
+
+POD in kubernetes:
+=====================================================
+In docker if we run an image we get a container 
+
+# docker run nginx -> get a container with nginx app on it 
+
+In kubernetes when we run an image we get a pod 
+
+A pod consist of a container of the image that we have run
+
+# kubectl run pod1 --image nginx
+
+-> kubernetes run the image nginx, create apod with name pod1 and in the pod is a container with application nginx
+
+WHY POD??
+
+1 main feature of kubernetes is to ensure when an image is run -> container is created -> contaienr is always running
+if the app on the container is stopped--> immediately it should be restarted --> who will do this???
+kubernetes gives us POD to do this
+
+WHAT is a pod:
+POD is a simple and smallest object in kubernetes that we can deploy 
+A pod is like a box which holds your container 
+A pod will be responsible to restart container in case it fails. we do not have to worry.
+So in Kubernetes we say-> we create a pod --> which is nothing but creating a container from an Image
