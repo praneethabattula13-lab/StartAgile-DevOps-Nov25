@@ -189,13 +189,37 @@ Demo on PODs:
 
 # kubectl describe pod pod1 | less
 
+=============================================================
+Agenda: 27 Nov:
+=============================================================
+
+1. Types of pod
+    - Single container Pod
+    - Multi  Container Pod
+2. Creating multiple Pods - ReplicaSet
+3. Access the pod from browser-> Service 
 
 
 
+Demo 1 : Multi container POD:
+=================================
 
-
-
-
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: multi-pod-1 # this is pod name
+  labels:  # used to group same pods and then can be used for querying in kubernetes
+    author: sonal
+    app: java
+    type: webserver
+spec:
+  containers:
+    - name: c1  # this is container name 
+      image: nginx
+    - name: c2
+      image: httpd
+    - name: c3
+      image: ubuntu
 
 
 
