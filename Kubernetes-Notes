@@ -234,6 +234,335 @@ Agenda: 28 Nov 2025
      - scale up and scale down
     -> Changing Image on the Deployment
 
+ReplicaSet:
+===================
+# ReplicaSet : create a set of Replicas(pods)
+# ReplicaSet : It is a loop running in the cluster-
+# ensure your desired count of replicas are always running
+# example: I desire 5 replicas
+# we have to create replicaset->on this mention how many replica->5->
+#  give us 5 replicas(pods)-> current = desired pods
+# now i desire 10 pods --> current 5, desired 10 - mismatch
+# immediatly replicaset will create 5 more new pods -> current 10, desired 10
+# we create replicasset, which in turn creates a pod
+
+# how to create a replicaset -> we write below YAML
+
+---
+kind: ReplicaSet 
+apiVersion: apps/v1
+metadata: 
+   name: myrs
+spec:
+   selector:   # will give current count
+     matchLabels:
+       type: webserver
+   replicas: 4 # how many pods to be created  - desired count
+   template: # this is pod template, using this the 4 pods will be created
+      metadata:
+        labels:
+          type: webserver
+      spec:
+        containers:
+           - name: c1
+             image: nginx 
+
+
+Deployment:
+========================================
+
+Recreate Deployment Strategy
+
+
+  The Recreate deployment strategy in Kubernetes is a method where all existing Pods are terminated before new ones are created during a deployment update.
+
+  This strategy is useful when:
+
+  The application doesn’t support multiple versions running simultaneously.
+
+  There are conflicts with shared resources (e.g., using the same persistent storage).
+
+  You want zero overlap between old and new versions.
+
+
+
+# vim deployment-recrete.yml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+
+
+Save and run the yaml
+
+Now run the command to update the image and see all 3 pods will be terminated and new pods will be created.
+# kubectl set image deployment/nginx-deployment nginx=nginx:1.26
+
+# kubectl get all
+
+# kubectl rollout status deployment <deploymentname>
+
+Go back to previous version:
+
+# kubectl rollout undo deployment <deploymentName>
+
+========================================
+MatchExpressions in Deployment or ReplicaSet YAML
+========================================
+4 types of operators: In, NotIn, Exist, DoesNotExist
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - nginx
+          - webserver
+      - key: env
+        operator: NotIn
+        values:
+          - prod
+  template:
+    metadata:
+      name: nginxpod
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          resources:
+            limits:
+              cpu: 10m
+=======================================
+Rolling Update Deployment
+
+# vim deployment.yml
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: kubeserve
+spec:
+  replicas: 3
+  minReadySeconds: 10 # wait for 45 sec before going to deploy next pod
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1  
+      maxSurge: 1        # max number of pods to run for the deployment
+  selector:
+    matchLabels:
+      app: kubeserve
+  template:
+    metadata:
+      name: kubeserve
+      labels:
+        app: kubeserve
+    spec:
+      containers:
+       - name: app
+         image: leaddevops/kubeserve:v1
+        
+
+
+# kubectl create -f deployment.yml 
+# kubectl get deployment
+# kubectl get all
+# kubectl scale deployment kubeserve --replicas=5
+# kubectl get pods
+# kubectl scale deployment kubeserve --replicas=2
+Change the Image
+# kubectl set image deployment kubeserve app=leaddevops/kubeserve:v2
+# kubectl rollout status
+# kubectl set image deployment kubeserve app=leaddevops/kubeserve:v3
+# kubectl rollout status deployment kubeserve
+V3 is faulty.. so rollback to previous version
+# kubectl rollout undo deployment kubeserve
+
+
+
+
+
+
+
+
+
+
+HPA:
+===============================
+
+Horizontal Pod Autoscaler
+========================================================
+
+Instal Metric Server:
+
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+wget -c  https://gist.githubusercontent.com/initcron/1a2bd25353e1faa22a0ad41ad1c01b62/raw/008e23f9fbf4d7e2cf79df1dd008de2f1db62a10/k8s-metrics-server.patch.yaml
+
+kubectl patch deploy metrics-server -p "$(cat k8s-metrics-server.patch.yaml)" -n kube-system
+
+
+
+# kubectl get pods -n kube-system
+
+# cd
+
+# cd mykubefiles
+
+# vim hpa.yml
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      name: nginxpod
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          resources:
+            limits:
+              cpu: 10m
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-svc
+spec:
+  type: ClusterIP  ## this is default if we do not type in service definition
+  selector:
+    app: nginx
+  ports:
+   - protocol: TCP
+     port: 80
+     targetPort: 80
+
+---
+
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nginx-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nginx
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 5
+
+
+
+Save the file
+
+# kubectl delete all --all
+
+# kubectl create -f hpa.yml
+
+# kubectl get all
+
+# Now launch the load generator pod -> open master terminal again
+
+# kubectl run -i --tty load-generator --rm --image=busybox --restart=Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://Service-Internal-IP:80; done"
+
+Check the pods:
+
+kubectl get pods
+kubectl top pods
+
+Explanation for HPA: 
+=================
+A Deployment can scale up and scale down the pods -->
+
+but if deployment has to scale the pods automatically as the number of user request are increasing.. how will it know about that??
+
+Metric Server --> computes and displays the CPU and memory of each pod in the cluster 
+
+Deployment needs a friend that can inform it that CPU of the pods has been utilized now scale up the pods
+
+That friend is HPA 
+
+HPA uses metric server to monitor the CPU of  the pods that are associated with the deployment that we mentioned in YAML 
+scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nginx
+
+HPA will able to tell you current CPU usage of the all Pods in the deployment
+
+HPA uses this formula to compute the desired number of replicas that deployment should maintain 
+
+Desired Count = Current replicas * (current utilization)/target utilization
+
+targetCPUUtilizationPercentage: 50 
+
+Current replicas = 4 pods 
+
+current utilization = average CPU utilization of all the pods associated currently with the deployment 
+
+current utilization = 300 milli cpu core /pod
+
+CPU utilization of deployment  that HPA will compute 
+
+CPU utilization = 300/50 * 100 ==> 60 %
+
+Based on this  how HAP will compute the desired count of replicas for the deployment 
+
+Desired Count = Current replicas * (current utilization)/target utilization
+
+
+Desired Count = 4 * 60/50 = 4.8 ==> rounded of 5 
+
+Desired Count = 5
+
+HPA will tell deployment to scale --replicas = 5
+
 
 
 
