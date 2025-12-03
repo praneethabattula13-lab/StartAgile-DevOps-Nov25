@@ -1,0 +1,293 @@
+Agenda:
+=====================================
+Introduction of Configuration Management
+Discuss on Different CM tools
+Push and Pull Approach
+Introduction to Ansible
+Ansible Architecture and its components
+Setup Ansible Controller and worker nodes.
+=========================================
+Configuration
+=========================================
+make changes on multiple server
+    -> installing packages 
+    -> copying config files
+    -> creating files and directories
+    -> creation users and groups
+    -> setting up permissions
+    -> deploying applications
+    -> execution of script
+
+If we have to these changes/tasks on 200 servers manually:
+    -> Time consuming 
+    -> repetitive
+    -> error prone
+    -> application  may crash
+    -> all updates may not be available
+    -> keeping a track of changes will be difficult
+    -> Activities should done separately for different OS
+
+Configuration Management:
+================================
+> Using an automation tool to make changes on several servers in different environments in very less time .
+> It is all about bringing consistency across on the servers-> this can be achieved by using an automation tool.
+> An automation tool will also ensure your desired changes are always available on the servers
+>If our desired configurations are not available on the servers then the tool should identify that and make change son the servers
+to get desired setup.
+> We write code in order to make configurations changes using the tools
+> This code can be maintained in VC tool and can collaborated with other team members.
+> CM tool connect to the available infra and then make changes on them
+> It creates a Logs of change performed in servers.
+
+Infrastructure as a code tool: Terraform
+======================================
+Writing the code to create/modify/delete infrastructure on the cloud (AWS, azure, GCP)
+Using a tool to write the code and provision the infra is called as IAC tool 
+
+
+Various CM tools:
+==================================
+
+PULL Approach
+==============
+-> puppet
+-> Chef
+
+PUSH Approach
+================
+-> Ansible
+-> Salt stack
+
+Pull aproach:
+==================
+
+> chef
+> puppet
+
+In the pull approach changes are pulled by the agent nodes 
+The controller or the master node will not make any changes on the agent nodes
+The agent nodes have a agent process installed on them
+these agent process will poll the controller on the scheduled time for changes
+if there are new changes computed on the master node, the agent process will pull the changes and execute on themselves.
+
+
+
+Push approach:
+=================
+
+> saltstack
+>Ansible
+
+The code is written in the master/Controller node
+These tools can connect to the agent/host nodes parallely 
+These tools will then apply configuration code changes immediatly on the host/agent servers
+On the host/agent servers no agent process is present
+Everything is controlled by master node
+
+===================================
+Ansible:
+====================================
+-> It is an open source tool and use it for free
+-> It is very simple tool and easy to learn 
+-> It works on push approach.
+-> Ansible as a tool has 2 parts:
+ 1. Ansible core -> Ansible to be used on the command line 
+ 2. Ansible tower/AWX -> It is the GUI of ansible or Ansible dashboard
+ -> Ansible will always be installed on a Linux OS
+ -> Ansible can connect to servers of any OS -> Linux or windows
+ -> Ansible is a python based tool which required version >=2.7
+ -> Ansible configuration code is written in YAML
+ -> It is an agentless tools
+ -> It support configuring infrastructure on the cloud also.
+ 
+ =====================================
+ INVENTORY: WHERE TO DO THE CHANGES
+ ==============================
+ It is a simple file in which we will write the list of Ip address or hostnames of the servers where 
+ ansible can connect and make changes.
+ This file is available by default with a name "hosts" and is available at the directory "/etc/ansible"
+ You can create your inventory file also and place it any directory of the Ansible controller.
+ 
+ There are 2 types of inventory file:
+ 
+ 1. Static Inventory: 
+ ============================
+ Inventory file is created by user 
+ Ip address are written by the user in the file
+ When you have limited infra then create the static file.
+ 
+ 2. Dynamic Inventory:
+ =============================
+ If the number of servers are auto scaling that means they are on the cloud
+ then we use ansible to generate our inventory file
+
+====================================================
+Modules:
+--------------------------
+They are nothing but python scripts (ansible pre-written code) that are pushed to host servers to make changes.
+These modules accept some input parameters from the user to configure desired changes on the servers
+
+example : copy module -> accept input like source file location and destination
+
+get_url : url=https://example.com/file1 dest=/tmp
+
+Ansible works by connecting to your host servers and pushing these scripts which we call as ansible modules 
+on them.
+
+https://docs.ansible.com/ansible/2.8/modules/list_of_all_modules.html
+
+We can create our own custom modules also in ansible using pyhton.
+
+======================================================
+Playbooks:
+======================================================
+Ansible code will be written in a file called as playbook 
+A playbook consist of a play 
+A play is nothing but:
+  inventory hosts -> servers where to do changes 
+  tasks to be performed
+     -> modules to be executed
+playbook is written in YAML
+
+playbook with YAML code --> playbook is run on the ACM--> 
+it is then converted to a python code --> this py code is copied on the worker server
+ansible then executed the py program on each worker --> after the code is executed --> 
+the python code is deleted from worker
+In the playbook we can add -> variable, conditions, dependencies, handle errors, loops 
+
+=========================================================
+ansible.cfg file -> present in /etc/ansible 
+=========================================================
+All the configuration details of ansible are placed in this file.
+user details, password details, module location, inventory location, fork details 
+You can also create your own ansible.cfg with required parameters for the execution of the playbook
+==========================================================
+Create 2 EC2 servers:
+
+Install Ansible on EC2 server:
+
+$ sudo apt update
+$ sudo apt install software-properties-common
+$ sudo add-apt-repository --yes --update ppa:ansible/ansible
+$ sudo apt install ansible
+
+====================================================
+CONNECT ANSIBLE CONTROLLER WITH ANSIBLE HOST:
+====================================================
+1. We will generate SSH keys on the controller machine 
+Execute below command:
+# ssh-keygen
+
+Press enter key 3 times and keys will be generated 
+
+2. Copy the ssh keys in the worker machine 
+On the controller machine 
+exeucte below command :
+
+# cat /root/.ssh/id_rsa.pub
+copy the key 
+
+3. keys have to be copied on worker machine in ~/.ssh/authorized_keys files
+
+Go to worker machine 
+
+# ls -al  ==> check if you have .ssh folder 
+
+execute below command 
+
+# echo "your-public-key" >> ~/.ssh/authorized_keys
+
+4. Validate Both the machine are able to communicate.
+
+# ssh root@<privateip-worker>
+
+you will see controller is connected to worker 
+
+to come out of it execute below command 
+
+# exit 
+
+==============================
+For us towrite ansible code, we go to default directory :
+
+# cd /etc/ansible 
+
+Update the host file with worker details 
+
+# vim hosts 
+
+press i
+
+scroll to the bottom and create below host group 
+
+[webserver]
+<give-privateip-worker>
+
+save the file and come out.
+
+=====================================
+Ansible code can be written in 2 ways :
+
+1. Adhoc commands :
+- single line commands 
+- execute single module at a time 
+- perform single change on the worker 
+- whenever we want to quickly check something on worker we can use adhoc commands 
+
+Syntax to write adhoc command:
+
+# ansible <hostgorup> -m <modulename> -a "input argument"
+
+demo:
+# ansible webserver -m ping
+# ansible webserver -m command -a "uptime"
+# ansible webserver -m command -a "df -h"
+
+2. Playbooks
+=========================
+Playbooks is used when we have to execute multiple tasks on the worker
+Playbooks are written in YAML 
+Playbooks is written in ACM only 
+Playbooks consist of 2 main parts 
+1. hosts -> host group created in hosts files
+2. tasks -> modules to be executed
+
+Structure:
+
+- name: Give a name to the play 
+  hosts: give the host group name 
+  tasks:
+  - name: give a unique name to your task 
+    module-name: arg-name=value arg-name=value
+  - name: give a unique name to your task 
+    module-name: arg-name=value arg-name=value
+  - name: give a unique name to your task 
+    module-name: arg-name=value arg-name=value
+  - name: execute a command 
+    command: uptime 
+  - name: install package 
+    apt: name=php state=present
+
+==================================
+Register: it is a concept in ansible that will create a variable 
+the variable will store/register the output of the module executed 
+Playbook1 
+
+# vim playbook1.yml 
+
+- name: First playbook in ansible
+  hosts: webserver
+  tasks:
+  - name: Print a greeting for the user
+    debug: msg="Hello from Ansible Controller"
+  - name: Execute a command
+    command: hostname -s
+    register: output_cmd
+  - name: Print the variable
+    debug: var=output_cmd
+
+save the file 
+
+# ansible-playbook playbook1.yml --syntax-check 
+
+# ansible-playbook playbook1.yml
