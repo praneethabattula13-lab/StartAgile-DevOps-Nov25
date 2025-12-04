@@ -1,0 +1,100 @@
+---
+# vars file for check_logs
+# Defaults
+
+log_file: /var/log/messages
+dump_dir: /tmp/
+
+---
+# tasks file for check_logs
+
+- name: Capture Timestamp
+  shell: date +"%Y%m%d%H%M%S"
+  register: current_date_time
+
+- name: Check the logs
+  shell: grep "`date --date="today" +%b\ %e`" {{ log_file }}
+  become: yes
+  register: log_messages
+  ignore_errors: true
+
+- name: Logs Output
+  debug: msg={{ log_messages.stdout_lines }}
+
+- name: Create dump directory
+  file: path={{ dump_dir }} state=directory mode=0755
+
+
+
+- name: Capture timestamp
+  shell: date +"%Y%m%d%H%M%S"
+  register: current_date_time
+
+- name: Check Uptime
+  shell: "uptime"
+  register: uptime
+
+- name: Output Uptime
+  debug: msg={{ uptime.stdout_lines }}
+
+
+==============================
+Configure additional cron jobs
+
+
+---
+# vars file for install_cron
+
+cron_name: "Iotop Monitoring"
+cron_min: 0 
+cron_hour: "5,2"
+cron_job: "/usr/sbin/iotop -b -n 1 >> /var/tmp/iotop.log 2>> /var/tmp/iotop.err"
+dump_dir: /var/tmp
+cron_stat: present
+backup_file: /var/tmp/cron-backup-{{ inventory_hostname }}-{{ current_date_time.stdout }}.txt
+
+
+
+---
+# tasks file for install_cron
+
+  - name: Capture timestamp
+    shell: date +"%Y%m%d%H%M%S"
+    register: current_date_time
+
+  - name: Check the crontab for root (Before)
+    shell: crontab -l
+    register: crontab_out_before
+
+  - name: Logs Output
+    debug: msg={{ crontab_out_before.stdout_lines }}
+
+  - name: Save the crontab output for root before the change
+    template: src=cron_output_before.txt.j2 dest={{ dump_dir }}/cron-before-{{ inventory_hostname }}-{{ current_date_time.stdout }}.txt
+
+  - name: Fetch the output file
+    fetch: src={{ dump_dir }}/cron-before-{{ inventory_hostname }}-{{ current_date_time.stdout }}.txt dest={{ dump_dir }}/cron-before-{{ inventory_hostname }}-{{ current_date_time.stdout }}.txt flat=yes
+
+
+  - name: Install a new cron job entry
+    cron: name=Iotop Monitoring minute=0  hour=5,2 job=/usr/sbin/iotop -b -n 1 >> /var/tmp/iotop.log 2>> /var/tmp/iotop.err state=present backup=yes
+
+  - name: Check the crontab for root (After)
+    shell: crontab -l
+    register: crontab_out_after
+
+  - name: Logs Output
+    debug: msg={{ crontab_out_after.stdout_lines }}
+
+  - name: Save the crontab output for root after the change
+    template: src=cron_output_after.txt.j2 dest={{ dump_dir }}/cron-after-{{ inventory_hostname }}-{{ current_date_time.stdout }}.txt
+
+  - name: Fetch the output file
+    fetch: src={{ dump_dir }}/cron-after-{{ inventory_hostname }}-{{ current_date_time.stdout }}.txt dest={{ dump_dir }}/cron-after-{{ inventory_hostname }}-{{ current_date_time.stdout }}.txt flat=yes
+
+
+
+
+
+
+
